@@ -1,5 +1,6 @@
 import unittest
 from src.comment_remover.comment_remover import CommentRemover
+from src.comment_remover.multi_line_comment_signs import CommentSign
 
 
 class CommentRemoverTest(unittest.TestCase):
@@ -25,6 +26,7 @@ class CommentRemoverTest(unittest.TestCase):
         }
         remover = CommentRemover(single_row_sign='//')
         remover.remove_single_row_comment(text)
+        remover.remove_marked_rows(text)
         self.assertTrue(text == expected_result)
         self.assertTrue(remover.deleted_rows_map == deleted_rows)
         self.assertTrue(remover.deleted_row_fragments == deleted_row_fragments)
@@ -33,7 +35,6 @@ class CommentRemoverTest(unittest.TestCase):
         text = [
              '\ttext without comment\n',
              '    /*[Attribute]*/class declaration\n',
-             # TODO: text with several occurrences of multi row comment in same line
              # all commented lines must be removed (first one will be empty)
              '    /* bla-bla 12\n',
              '\tsome //text\n',
@@ -51,7 +52,8 @@ class CommentRemoverTest(unittest.TestCase):
             'start here /* start comment here\n',
             'end comment here*/ middle text /*some comment again*/ one more text /*last comment*/ end of text\n',
             # new line symbol must remain
-            'text /*commented text*/'
+            '/*123456789*/\n',
+            'text /*commented text*/',
         ]
         expected_result = [
             '\ttext without comment\n',
@@ -70,6 +72,7 @@ class CommentRemoverTest(unittest.TestCase):
             5: '/* commented text\n',
             6: 'hey!*/ \n',
             8: '\tstill commented text\n',
+            13: '/*123456789*/\n'
         }
         deleted_row_fragments = {
             1: {
@@ -93,20 +96,42 @@ class CommentRemoverTest(unittest.TestCase):
                 31: '/*some comment again*/',
                 68: '/*last comment*/'
             },
-            13: {
+            14: {
                 5: '/*commented text*/'
             }
         }
 
         multi_row_comment_signs = [
-            { 'left': '/*', 'right': '*/' }
+            { CommentSign.Left: '/*', CommentSign.Right: '*/' }
         ]
-
-        remover = CommentRemover(multi_row_comment_signs)
+        remover = CommentRemover()
         remover.remove_multi_row_comment(text, multi_row_comment_signs[0])
+        remover.remove_marked_rows(text)
         self.assertTrue(text == expected_result)
         self.assertTrue(remover.deleted_rows_map == deleted_rows)
         self.assertTrue(remover.deleted_row_fragments == deleted_row_fragments)
+
+    def test_remove_all_comments_from_file(self):
+        in_file = open('file_with_comments.txt', 'r')
+        text = in_file.readlines()
+        # in_file.close
+
+        out_file = open('expected_result.txt', 'r')
+        expected_result = out_file.readlines()
+        # out_file.close
+
+        # TODO: restore deleted text after removing
+
+        remover = CommentRemover(single_row_sign='//', multi_row_sign_left='/*', multi_row_sign_right='*/')
+        remover.add_multi_row_comment_sign(left='@*', right='*@')
+        remover.add_multi_row_comment_sign(left='<!--', right='-->')
+        remover.remove_all_comments(text)
+
+        result = open('result.txt', 'w')
+        for line in text:
+            result.write(line)
+        result.close()
+        self.assertTrue(text == expected_result)
 
 
 if __name__ == '__main__':

@@ -1,9 +1,19 @@
+from src.comment_remover.multi_line_comment_signs import CommentSign
+
+
 class CommentRemover:
     def __init__(self,
                  single_row_sign=None,
-                 multi_row_signs=None):
+                 multi_row_sign_left=None,
+                 multi_row_sign_right=None):
         self._single_row_sign = single_row_sign
-        self._multi_row_signs = multi_row_signs
+        self._multi_row_signs = [
+            {
+                CommentSign.Left: multi_row_sign_left,
+                CommentSign.Right: multi_row_sign_right
+            }
+        ]
+        self._rows_to_delete = []
         self._deleted_rows_map = {}
         self._deleted_row_fragments = {}
 
@@ -15,19 +25,26 @@ class CommentRemover:
     def deleted_row_fragments(self):
         return self._deleted_row_fragments
 
+    def add_multi_row_comment_sign(self, left, right):
+        self._multi_row_signs.append({
+            CommentSign.Left: left,
+            CommentSign.Right: right
+        })
+
     def remove_all_comments(self, text):
         for comment_sign_pair in self._multi_row_signs:
             self.remove_multi_row_comment(text, comment_sign_pair)
-        self.remove_single_row_comment(text)
+        if not self._single_row_sign is None:
+            self.remove_single_row_comment(text)
+        self.remove_marked_rows(text)
 
     def remove_single_row_comment(self, text):
-        rows_to_delete = []
         line_index = 0
         for line in text:
             if line.find(self._single_row_sign) >= 0:
                 comment_index = line.find(self._single_row_sign)
                 if self._check_if_row_is_empty(line, last_index=comment_index):
-                    rows_to_delete.append(line_index)
+                    self._rows_to_delete.append(line_index)
                 else:
                     if line.endswith('\n'):
                         self._store_text_fragment(line_index, comment_index, line[comment_index:-1])
@@ -36,17 +53,11 @@ class CommentRemover:
                         self._store_text_fragment(line_index, comment_index, line[comment_index:])
                         text[line_index] = line[:comment_index]
             line_index += 1
-        # remove marked lines starting from the end
-        rows_to_delete.reverse()
-        for index in rows_to_delete:
-            self._deleted_rows_map[index] = text[index]
-            del text[index]
 
     def remove_multi_row_comment(self, text, comment_sign_pair):
         # TODO: this case will cause code with compile error
         # TODO:     //*
         # TODO:     // bla-bla-bla */ text
-        rows_to_delete = []
         is_comment_opened = False
         for line_index in range(0, len(text)):
             repeat = True
@@ -54,19 +65,25 @@ class CommentRemover:
                 line = text[line_index]
                 repeat = False
                 if not is_comment_opened:
-                    open_index = line.find(comment_sign_pair['left'])
+                    open_index = line.find(comment_sign_pair[CommentSign.Left])
                     if open_index >= 0:
-                        close_index = line.find(comment_sign_pair['right'])
+                        # TODO: case of '/*/' cause wrong behaviour and memory overflow as a result
+                        close_index = line.find(comment_sign_pair[CommentSign.Right])
                         if close_index >= 0:
-                            self._store_text_fragment(line_index, open_index,
-                                                      line[open_index:close_index+len(comment_sign_pair['right'])])
-                            # cut off multi comment in one line
-                            text[line_index] = line[:open_index] +\
-                                                     line[close_index+len(comment_sign_pair['right']):]
-                            repeat = True
+                            new_line = line[:open_index] +\
+                                       line[close_index + len(comment_sign_pair[CommentSign.Right]):]
+                            if self._check_if_row_is_empty(new_line):
+                                self._rows_to_delete.append(line_index)
+                            else:
+                                # cut off multi comment in one line
+                                self._store_text_fragment(line_index, open_index,
+                                                          line[open_index:close_index + len(
+                                                              comment_sign_pair[CommentSign.Right])])
+                                text[line_index] = new_line
+                                repeat = True
                         else:
                             if self._check_if_row_is_empty(line, last_index=open_index):
-                                rows_to_delete.append(line_index)
+                                self._rows_to_delete.append(line_index)
                             else:
                                 if line.endswith('\n'):
                                     self._store_text_fragment(line_index, open_index, line[open_index:-1])
@@ -76,21 +93,22 @@ class CommentRemover:
                                     text[line_index] = line[:open_index]
                             is_comment_opened = True
                 elif is_comment_opened:
-                    close_index = line.find(comment_sign_pair['right'])
+                    close_index = line.find(comment_sign_pair[CommentSign.Right])
                     if close_index >= 0:
-                        if self._check_if_row_is_empty(line, start_index=close_index+len(comment_sign_pair['right'])):
-                            rows_to_delete.append(line_index)
+                        if self._check_if_row_is_empty(line, start_index=close_index+len(comment_sign_pair[CommentSign.Right])):
+                            self._rows_to_delete.append(line_index)
                         else:
                             self._store_text_fragment(line_index, 0,
-                                                      line[:close_index + len(comment_sign_pair['right'])])
-                            text[line_index] = line[close_index + len(comment_sign_pair['right']):]
+                                                      line[:close_index + len(comment_sign_pair[CommentSign.Right])])
+                            text[line_index] = line[close_index + len(comment_sign_pair[CommentSign.Right]):]
                             repeat = True
                         is_comment_opened = False
                     else:
-                        rows_to_delete.append(line_index)
-        # remove marked lines starting from the end
-        rows_to_delete.reverse()
-        for index in rows_to_delete:
+                        self._rows_to_delete.append(line_index)
+
+    def remove_marked_rows(self, text):
+        self._rows_to_delete.sort(reverse=True)
+        for index in self._rows_to_delete:
             self._deleted_rows_map[index] = text[index]
             del text[index]
 

@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+@using DBModel;
+@using ConfigurationSettings;
+@model Order
+
+@{
+    var config = ConfigurationManager.GetTranslationSection();
+}
+
+<head>
+	
+	@Scripts.Render("~/bundles/jquery")
+	@Scripts.Render("~/bundles/bootstrap")
+</head>
+<body>
+	<div>
+		<div>
+			<div>
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+					<h4 class="modal-title"><span class="modal-title-icon"></span> </h4>
+					<div class="modal-header-text"></div>
+				</div>
+				<div class="modal-body"></div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">@Resources.Resource.Close</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	@if (Model != null)
+	{
+		if (Model.SomeEntity != null)
+		{
+			<li class="list-group-item">
+				<span>@Resources.Resource.CreatedMessage:</span>
+				<span>@Model.SomeEntity.SomeProperty @string.Format("{0:HH:mm}", Model.SomeEntity.Date)</span>
+			</li>
+		}
+ bool flag = true;
+		if (Model.flag1 && Model.SomeProperty != null)
+		{
+			<li>
+				<span>@Resources.Resource.Attribute:</span>
+				<span>@Model.IBaseOrderId</span>
+			</li>
+		}
+	}
+</body>
+</html>
