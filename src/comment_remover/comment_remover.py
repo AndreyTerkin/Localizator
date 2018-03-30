@@ -1,10 +1,9 @@
 class CommentRemover:
-    def __init__(self, single_row_sign=None, multi_row_sign_left=None, multi_row_sign_right=None):
+    def __init__(self,
+                 single_row_sign=None,
+                 multi_row_signs=None):
         self._single_row_sign = single_row_sign
-        self._multi_row_sign = dict(
-            left=multi_row_sign_left,
-            right=multi_row_sign_right
-        )
+        self._multi_row_signs = multi_row_signs
         self._deleted_rows_map = {}
         self._deleted_row_fragments = {}
 
@@ -17,7 +16,8 @@ class CommentRemover:
         return self._deleted_row_fragments
 
     def remove_all_comments(self, text):
-        self.remove_multi_row_comment(text)
+        for comment_sign_pair in self._multi_row_signs:
+            self.remove_multi_row_comment(text, comment_sign_pair)
         self.remove_single_row_comment(text)
 
     def remove_single_row_comment(self, text):
@@ -29,8 +29,12 @@ class CommentRemover:
                 if self._check_if_row_is_empty(line, last_index=comment_index):
                     rows_to_delete.append(line_index)
                 else:
-                    self._store_text_fragment(line_index, comment_index, line[comment_index:])
-                    text[line_index] = line[:comment_index] + '\n'
+                    if line.endswith('\n'):
+                        self._store_text_fragment(line_index, comment_index, line[comment_index:-1])
+                        text[line_index] = line[:comment_index] + '\n'
+                    else:
+                        self._store_text_fragment(line_index, comment_index, line[comment_index:])
+                        text[line_index] = line[:comment_index]
             line_index += 1
         # remove marked lines starting from the end
         rows_to_delete.reverse()
@@ -38,7 +42,7 @@ class CommentRemover:
             self._deleted_rows_map[index] = text[index]
             del text[index]
 
-    def remove_multi_row_comment(self, text):
+    def remove_multi_row_comment(self, text, comment_sign_pair):
         # TODO: this case will cause code with compile error
         # TODO:     //*
         # TODO:     // bla-bla-bla */ text
@@ -50,34 +54,36 @@ class CommentRemover:
                 line = text[line_index]
                 repeat = False
                 if not is_comment_opened:
-                    open_index = line.find(self._multi_row_sign['left'])
+                    open_index = line.find(comment_sign_pair['left'])
                     if open_index >= 0:
-                        close_index = line.find(self._multi_row_sign['right'])
+                        close_index = line.find(comment_sign_pair['right'])
                         if close_index >= 0:
                             self._store_text_fragment(line_index, open_index,
-                                                      line[open_index:close_index+len(self._multi_row_sign['right'])])
+                                                      line[open_index:close_index+len(comment_sign_pair['right'])])
                             # cut off multi comment in one line
                             text[line_index] = line[:open_index] +\
-                                                     line[close_index+len(self._multi_row_sign['right']):]
-                            if line[close_index+len(self._multi_row_sign['right'])+1] == '\n':
-                                text[line_index] += '\n'
+                                                     line[close_index+len(comment_sign_pair['right']):]
                             repeat = True
                         else:
                             if self._check_if_row_is_empty(line, last_index=open_index):
                                 rows_to_delete.append(line_index)
                             else:
-                                self._store_text_fragment(line_index, open_index, line[open_index:])
-                                text[line_index] = line[:open_index] + '\n'
+                                if line.endswith('\n'):
+                                    self._store_text_fragment(line_index, open_index, line[open_index:-1])
+                                    text[line_index] = line[:open_index] + '\n'
+                                else:
+                                    self._store_text_fragment(line_index, open_index, line[open_index:])
+                                    text[line_index] = line[:open_index]
                             is_comment_opened = True
                 elif is_comment_opened:
-                    close_index = line.find(self._multi_row_sign['right'])
+                    close_index = line.find(comment_sign_pair['right'])
                     if close_index >= 0:
-                        if self._check_if_row_is_empty(line, start_index=close_index+len(self._multi_row_sign['right'])):
+                        if self._check_if_row_is_empty(line, start_index=close_index+len(comment_sign_pair['right'])):
                             rows_to_delete.append(line_index)
                         else:
                             self._store_text_fragment(line_index, 0,
-                                                      line[:close_index + len(self._multi_row_sign['right'])])
-                            text[line_index] = line[close_index + len(self._multi_row_sign['right']):]
+                                                      line[:close_index + len(comment_sign_pair['right'])])
+                            text[line_index] = line[close_index + len(comment_sign_pair['right']):]
                             repeat = True
                         is_comment_opened = False
                     else:
@@ -105,13 +111,16 @@ class CommentRemover:
         if start_index is None:
             start_index = 0
         if last_index is None:
-            last_index = len(line)-1
+            last_index = len(line)
 
         if start_index >= last_index:
             return True
 
-        line_length = len(line[:last_index])
-        if line[start_index:last_index].count(' ') + line[start_index:last_index].count('\t') == line_length:
+        line_length = len(line[start_index:last_index])
+        if line[start_index:last_index].count(' ')\
+                + line[start_index:last_index].count('\t')\
+                + line[start_index:last_index].count('\n')\
+                == line_length:
             return True
         else:
             return False
