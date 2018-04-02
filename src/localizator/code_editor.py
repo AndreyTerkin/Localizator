@@ -35,7 +35,7 @@ class CodeEditor:
             entity_index, self._entity_name = self._find_entity(text, 'class') # take in account returned status
             any_changes = self._find_and_edit_reference_attribute(text)
             any_changes += self._edit_attributes(text, entity_index, 'Display')
-            # any_changes += self._edit_attributes(text, entity_index, 'Required')
+            any_changes += self._edit_attributes(text, entity_index, 'Required')
         else: # self._entity_type == EntityType.ENUM:
             entity_index, self._entity_name = self._find_entity(text, 'enum') # take in account returned status
             any_changes += self._edit_attributes(text, entity_index, 'Description')
@@ -47,7 +47,7 @@ class CodeEditor:
             f.truncate()
             for line in text:
                 f.write(line)
-        f.close
+        # f.close
         print('Resources successfully added to entity code')
         return self._entity_name
 
@@ -155,6 +155,8 @@ class CodeEditor:
         if attr_name  == 'Required':
             attr_property, required_message, index = self._find_attribute_property(
                 text, attr_name, 'ErrorMessage', attr_start, attr_end)
+            if index is None:
+                return False, attr_end + 1
             new_property = 'ErrorMessageResourceType = typeof(Resources.{1}.{2}.Resource),\n{0}\tErrorMessageResourceName = nameof(Resources.{1}.{2}.Resource.{3})'\
                 .format(offset, self._related_path, self._entity_name, property_name + 'Required')
             text[index] = text[index].replace(attr_property, new_property)
@@ -165,7 +167,7 @@ class CodeEditor:
             text, attr_name, 'Name', attr_start, attr_end)
         new_name = "nameof(Resources.{0}.{1}.Resource.{2})"\
             .format(self._related_path, self._entity_name, property_name)
-        self._properties.append((property_name, display_name))
+        self._properties.append((property_name, display_name.replace('"', '')))
 
         if self._entity_type == EntityType.Class:
             text[index] = text[index].replace(display_name, new_name)
@@ -216,22 +218,16 @@ class CodeEditor:
         if property is None:
             print('  {0} {1}: {2}Attribute property name {3} not found. Line {4}'
                   .format(self._entity_type.name, self._entity_name, attr_name, attr_property_name, attr_start + 1))
-            return None, None
+            return None, None, None
 
         return property, property_value, index
 
     def _find_attribute_property_value(self, line, attr_property_name):
         left_separator = '='
-        right_separator = ','
         if line.find(attr_property_name) == -1:
             return None, None
         prop_start = line[line.find(attr_property_name):]
-
-        if prop_start.find(right_separator) == -1:
-            prop = prop_start[:prop_start.find(')')]
-        else:
-            prop = prop_start[:prop_start.find(right_separator)]
-
+        prop = prop_start[:prop_start.find('")')+1]
         return prop, prop[prop.find(left_separator) + 1:].strip()
 
     @staticmethod

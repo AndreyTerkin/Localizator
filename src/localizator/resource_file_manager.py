@@ -4,7 +4,7 @@ import xml.etree.ElementTree as ET
 
 
 class XMLEditor:
-    xml_template = "../templates/resource_schema.xml"
+    xml_template = "../../templates/resource_schema.xml"
     languages = ['', '.en']
 
     @staticmethod
@@ -12,6 +12,11 @@ class XMLEditor:
         print('Creating resource files for entity {0}'.format(entity_name))
         if len(properties) == 0:
             print('There is no properties to add into resources')
+            return
+
+        target_folder = os.path.join(project_folder, 'Resources', related_path, entity_name, 'Resource.resx')
+        if os.path.exists(target_folder):
+            print('Resource files for entity {0} already exist'.format(entity_name))
             return
 
         XMLEditor.edit_template(properties, project_folder, related_path, entity_name)
@@ -138,7 +143,7 @@ class XMLEditor:
             las_gen_output.text = 'Resource{0}.Designer.cs'.format(lang)
             custom_namespace = ET.SubElement(embedded_res, 'CustomToolNamespace')
             custom_namespace.text = 'EAE_LIMS.DBModel.Resources.{0}.{1}'\
-                .format(related_path, entity_name)
+                .format(related_path.replace('\\', '.'), entity_name)
         XMLEditor._indent(embedded_resources_group) # pretty print
 
         tree = ET.ElementTree(root)
@@ -146,8 +151,6 @@ class XMLEditor:
             print('    Saving changes...')
             tree.write(f, xml_declaration=True, encoding='utf-8')
         print('      Successfully saved')
-
-    # resgen Resource.resx /str:C#,EAE_LIMS.DBModel.Resources.DocumentCategory,Resource,Recource.Designer.cs /publicClass
 
     @staticmethod
     def _tag_uri_and_name(elem):
