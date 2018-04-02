@@ -3,7 +3,7 @@ import re
 
 class LanguageWordsSearcher():
     def __init__(self):
-        self._search_pattern = '[а-яА-Я]+[\t\s.,-:!?@#$%№()*]*'
+        self._search_pattern = '[а-яА-Я]+[\t .,-:!?@#$%№()*]*'
 
     def find_words_in_line(self, line):
         mapper = []
@@ -14,8 +14,7 @@ class LanguageWordsSearcher():
                 match.group()
             )
             mapper.append(item)
-        merged_items = self._merge_neighbors(mapper)
-        pass
+        return self._merge_neighbors(mapper)
 
     def _merge_neighbors(self, mapper):
         merged_mapper = []
@@ -32,11 +31,11 @@ class LanguageWordsSearcher():
                 indexes_to_merge.append(index)
             else:
                 if len(indexes_to_merge) == 1:
-                    merged_mapper.append(mapper[index])
+                    merged_mapper.append(mapper[index-1])
                 else:
                     merged_mapper.append(self._merge_given_chunks(indexes_to_merge, mapper))
-                    indexes_to_merge.clear()
-                    indexes_to_merge.append(index)
+                indexes_to_merge.clear()
+                indexes_to_merge.append(index)
             index += 1
         if index == max_index+1 and len(indexes_to_merge) > 0:
             merged_mapper.append(self._merge_given_chunks(indexes_to_merge, mapper))

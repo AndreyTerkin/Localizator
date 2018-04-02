@@ -68,7 +68,6 @@ if __name__ == "__main__":
 
     entity_type = EntityType.Class
     # entity_type = EntityType.Enum
-    # entity_file = "Enums\\WorkflowDocumentTypes.cs"
 
     black_list = [
         'References',
