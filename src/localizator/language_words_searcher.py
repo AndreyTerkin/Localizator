@@ -3,7 +3,7 @@ import re
 
 class LanguageWordsSearcher():
     def __init__(self):
-        self._search_pattern = '[а-яА-Я]+[\t .,-:!?@#$%№()*]*'
+        self._search_pattern = '[а-яА-Я0-9]+[\t .,-:!?@#$%№(){}/\*]*'
 
     def find_words_in_line(self, line):
         mapper = []

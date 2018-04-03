@@ -24,8 +24,11 @@ if __name__ == "__main__":
         '_Customized\AdmRole.cs'
     ]
 
-    localizator = Localizator()
-    localizator.localize_datamodel(project_file, project_folder, init_class_dir, entity_type, black_list)
+    localizator = Localizator(project_folder, project_file)
+    # localizator.localize_datamodel(init_class_dir, entity_type, black_list)
+
+    file = "C:\\Projects\\Scripts\\Localizator\\src\\comment_remover\\file_with_comments.txt"
+    localizator.localize_view_file(file)
 
     print('Done')
     pass

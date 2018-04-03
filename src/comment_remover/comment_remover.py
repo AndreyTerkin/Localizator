@@ -14,8 +14,8 @@ class CommentRemover:
             }
         ]
         self._rows_to_delete = []
-        self._deleted_rows_map = {}
-        self._deleted_row_fragments = {}
+        self._deleted_rows_map = {} # row index map to line text in reverse order
+        self._deleted_row_fragments = {} # row index map to map of text start index to text
 
     @property
     def deleted_rows_map(self):
