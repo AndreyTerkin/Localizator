@@ -7,7 +7,7 @@ from src.localizator.resource_file_manager import XMLEditor
 from src.localizator.language_words_searcher import LanguageWordsSearcher
 
 
-class Localizator():
+class Localizator:
     def __init__(self, project_folder, project_file):
         self._project_folder = project_folder
         self._project_file = project_file
@@ -45,19 +45,20 @@ class Localizator():
         print('-' * 20)
 
     def localize_view_file(self, file):
-        # Store and remove comments
         deleted_rows, deleted_fragments = self._remove_comments(file)
-        # Find all words in Russian # Create resource files and fill them
-        self._replace_literal_constants_by_resources(file)
-        # Replace them by constructions with Resources
-        # Restore deleted comments
+        properties = self._replace_literal_constants_by_resources(file, 'Resources')
         self._restore_comments(file, deleted_rows, deleted_fragments)
+        target_folder = "C:\\Projects\\Scripts\\Localizator\\samples"
+        self._create_resources(properties, target_folder)
+        # Connect resources to resource projects
+
         # TODO: handle cases (like in Sample/Test.cshtml):
         # 1) string.Format("Текст {0} другой текст", arg0);
         # 2) ViewContext.Writer.Write(@"<div class=""alert"">Текст {0} продолжение текста</div>", arg0);
         pass
 
-    def _remove_comments(self, file):
+    @staticmethod
+    def _remove_comments(file):
         f = open(file, 'r+')
         text = f.readlines()
         comment_remover = CommentRemover(single_row_sign='//',
@@ -73,7 +74,8 @@ class Localizator():
         return comment_remover.deleted_rows_map,\
                comment_remover.deleted_row_fragments
 
-    def _restore_comments(self, file, deleted_rows, deleted_fragments):
+    @staticmethod
+    def _restore_comments(file, deleted_rows, deleted_fragments):
         f = open(file, 'r+')
         text = f.readlines()
         sorted_dict = collections.OrderedDict(sorted(deleted_rows.items()))
@@ -88,21 +90,53 @@ class Localizator():
         for line in text:
             f.write(line)
 
-    def _replace_literal_constants_by_resources(self, file):
+    @staticmethod
+    def _replace_literal_constants_by_resources(file, namespace):
         f = open(file, 'r+', encoding='utf-8-sig')
         text = f.readlines()
-        f.close()
         searcher = LanguageWordsSearcher()
         text_fragments = searcher.find_all_text_fragments(text)
-        properties = self._extract_list_of_properties(text_fragments)
-        xml_editor = XMLEditor()
-        xml_editor.create_resource_file(properties, "C:\\Projects\\Scripts\\Localizator\\samples")
-
-    def _extract_list_of_properties(self, text_fragments):
         properties = []
         counter = 0
         for row_index in text_fragments:
             for fragment in text_fragments[row_index]:
-                properties.append(('Property{0}'.format(counter), fragment[2]))
+                property_name = 'Property{0}'.format(counter)
+                resource_insertion = '{0}.{1}'.format(namespace, property_name)
+                if not Localizator._is_text_among_razor(text[row_index], fragment):
+                    resource_insertion = '@' + resource_insertion
+                text[row_index] = text[row_index][:fragment[0]] +\
+                                  resource_insertion +\
+                                  text[row_index][fragment[1]:]
+                properties.append((property_name, fragment[2]))
                 counter += 1
+        f.seek(0)
+        f.truncate()
+        for line in text:
+            f.write(line)
         return properties
+
+    @staticmethod
+    def _create_resources(properties, target_folder):
+        xml_editor = XMLEditor()
+        xml_editor.create_resource_file(properties, target_folder)
+
+    '''
+    There is a chance of wrong result
+    '''
+    @staticmethod
+    def _is_text_among_razor(line, fragment):
+        if '>' in line[fragment[0]-2:fragment[0]] or '<' in line[fragment[1]:fragment[1]+2]\
+                or Localizator._check_if_row_is_empty_without_fragment(line, fragment[0], fragment[1]):
+            return False
+        return True
+
+    @staticmethod
+    def _check_if_row_is_empty_without_fragment(line, start_fragment_index, last_fragment_index):
+        if start_fragment_index >= last_fragment_index:
+            # something goes wrong
+            return False
+        line_for_check = line[:start_fragment_index] + line[last_fragment_index:]
+        line_length = len(line_for_check)
+        if line_for_check.count(' ') + line_for_check.count('\t') + line_for_check.count('\n') == line_length:
+            return True
+        return False
