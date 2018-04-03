@@ -44,7 +44,7 @@ class CommentRemover:
             if line.find(self._single_row_sign) >= 0:
                 comment_index = line.find(self._single_row_sign)
                 if self._check_if_row_is_empty(line, last_index=comment_index):
-                    self._rows_to_delete.append(line_index)
+                    self._add_row_to_remove(line_index)
                 else:
                     if line.endswith('\n'):
                         self._store_text_fragment(line_index, comment_index, line[comment_index:-1])
@@ -73,17 +73,17 @@ class CommentRemover:
                             new_line = line[:open_index] +\
                                        line[close_index + len(comment_sign_pair[CommentSign.Right]):]
                             if self._check_if_row_is_empty(new_line):
-                                self._rows_to_delete.append(line_index)
+                                self._add_row_to_remove(line_index)
                             else:
                                 # cut off multi comment in one line
                                 self._store_text_fragment(line_index, open_index,
                                                           line[open_index:close_index + len(
-                                                              comment_sign_pair[CommentSign.Right])])
+                                                               comment_sign_pair[CommentSign.Right])])
                                 text[line_index] = new_line
                                 repeat = True
                         else:
                             if self._check_if_row_is_empty(line, last_index=open_index):
-                                self._rows_to_delete.append(line_index)
+                                self._add_row_to_remove(line_index)
                             else:
                                 if line.endswith('\n'):
                                     self._store_text_fragment(line_index, open_index, line[open_index:-1])
@@ -96,7 +96,7 @@ class CommentRemover:
                     close_index = line.find(comment_sign_pair[CommentSign.Right])
                     if close_index >= 0:
                         if self._check_if_row_is_empty(line, start_index=close_index+len(comment_sign_pair[CommentSign.Right])):
-                            self._rows_to_delete.append(line_index)
+                            self._add_row_to_remove(line_index)
                         else:
                             self._store_text_fragment(line_index, 0,
                                                       line[:close_index + len(comment_sign_pair[CommentSign.Right])])
@@ -104,7 +104,7 @@ class CommentRemover:
                             repeat = True
                         is_comment_opened = False
                     else:
-                        self._rows_to_delete.append(line_index)
+                        self._add_row_to_remove(line_index)
 
     def remove_marked_rows(self, text):
         self._rows_to_delete.sort(reverse=True)
@@ -123,6 +123,10 @@ class CommentRemover:
             self._deleted_row_fragments[row_number] = {
                 col_number: text
             }
+
+    def _add_row_to_remove(self, row_number):
+        if not row_number in self._rows_to_delete:
+            self._rows_to_delete.append(row_number)
 
     @staticmethod
     def _check_if_row_is_empty(line, start_index=None, last_index=None):

@@ -19,20 +19,21 @@ class XMLEditor:
             print('Resource files for entity {0} already exist'.format(entity_name))
             return
 
-        XMLEditor.edit_template(properties, project_folder, related_path, entity_name)
+        target_folder = os.path.join(project_folder, 'Resources', related_path, entity_name)
+        XMLEditor.create_resource_file(properties, target_folder)
         XMLEditor.generate_strong_type_resource_classes(project_folder, related_path, entity_name)
         XMLEditor.add_resources_to_project(project_folder, project_file, related_path, entity_name)
         print('Creating resource files was successfully')
 
     @staticmethod
-    def edit_template(properties, project_folder, related_path, entity_name):
-        target_folder = os.path.join(project_folder, 'Resources', related_path, entity_name)
+    def create_resource_file(properties, target_folder):
         try:
             print('  Creating directory {0}...'.format(target_folder))
             os.makedirs(target_folder)
         except FileExistsError:
             print('    Directory {0} already exists'.format(target_folder))
 
+        os.chdir(os.path.dirname(os.path.abspath(__file__)))
         tree = ET.ElementTree(file=XMLEditor.xml_template)
         root = tree.getroot()
 

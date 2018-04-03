@@ -5,6 +5,14 @@ class LanguageWordsSearcher():
     def __init__(self):
         self._search_pattern = '[а-яА-ЯёЁ]+[0-9\t .,-:!?@#$%№(){}/\*]*'
 
+    '''
+    Returns dictionary of found text fragments with its start and end indexes:
+      key: number of row
+      value: list of tuples
+        start of fragment,
+        end of fragment,
+        fragment text
+    '''
     def find_all_text_fragments(self, text):
         row_to_fragments_map = {}
         for index in range(0, len(text)):
@@ -16,10 +24,11 @@ class LanguageWordsSearcher():
         return row_to_fragments_map
 
     '''
-    Returns list of tuples:
-      start of fragment,
-      end of fragment,
-      fragment text
+    Returns list of found text fragments with its start and end indexes:
+      value: list of tuples
+        start of fragment,
+        end of fragment,
+        fragment text
     '''
     def find_words_in_line(self, line):
         mapper = []

@@ -2,9 +2,9 @@ import os
 import collections
 
 from src.comment_remover.comment_remover import CommentRemover
-
 from src.localizator.code_editor import CodeEditor
 from src.localizator.resource_file_manager import XMLEditor
+from src.localizator.language_words_searcher import LanguageWordsSearcher
 
 
 class Localizator():
@@ -47,12 +47,11 @@ class Localizator():
     def localize_view_file(self, file):
         # Store and remove comments
         deleted_rows, deleted_fragments = self._remove_comments(file)
-        # Find all words in Russian
+        # Find all words in Russian # Create resource files and fill them
+        self._replace_literal_constants_by_resources(file)
         # Replace them by constructions with Resources
         # Restore deleted comments
         self._restore_comments(file, deleted_rows, deleted_fragments)
-        # Create resource files and fill them
-
         # TODO: handle cases (like in Sample/Test.cshtml):
         # 1) string.Format("Текст {0} другой текст", arg0);
         # 2) ViewContext.Writer.Write(@"<div class=""alert"">Текст {0} продолжение текста</div>", arg0);
@@ -88,3 +87,22 @@ class Localizator():
         f.truncate()
         for line in text:
             f.write(line)
+
+    def _replace_literal_constants_by_resources(self, file):
+        f = open(file, 'r+', encoding='utf-8-sig')
+        text = f.readlines()
+        f.close()
+        searcher = LanguageWordsSearcher()
+        text_fragments = searcher.find_all_text_fragments(text)
+        properties = self._extract_list_of_properties(text_fragments)
+        xml_editor = XMLEditor()
+        xml_editor.create_resource_file(properties, "C:\\Projects\\Scripts\\Localizator\\samples")
+
+    def _extract_list_of_properties(self, text_fragments):
+        properties = []
+        counter = 0
+        for row_index in text_fragments:
+            for fragment in text_fragments[row_index]:
+                properties.append(('Property{0}'.format(counter), fragment[2]))
+                counter += 1
+        return properties

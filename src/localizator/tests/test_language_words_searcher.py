@@ -26,10 +26,10 @@ class LanguageWordsSearcherTest(unittest.TestCase):
             [(7, 39, 'На этом тексте  кончается строка')]
         )
     )
-    def test_find_words_in_line(self, data):
+    def test_find_words_in_line(self, test_data):
         searcher = LanguageWordsSearcher()
-        fragments = searcher.find_words_in_line(data[0])
-        self.assertTrue(data[1] == fragments)
+        fragments = searcher.find_words_in_line(test_data[0])
+        self.assertTrue(test_data[1] == fragments)
 
     def test_find_all_text_fragments(self):
         text = [
@@ -37,6 +37,9 @@ class LanguageWordsSearcherTest(unittest.TestCase):
             '\tvar context = (IDbContext)ViewBag.Context;\n',
             '\tvar reportList = new List<string>() { "Отчёт №1", "Другой отчет", "Отчет для отчетности" };\n',
             '}\n',
+            '<a href="#" class="btn btn-default btn-xs custom-button" data-id="@order.IdOrder"\n',
+            '\tdata-trigger="addsample" title="Создать новую пробу">Добавить пробу\n',
+            '</a>\n',
             '@Helpers.DxGrid(Model.Items, settings =>\n',
             '{\n',
             '\tsettings.SettingsText.GroupPanel = "Испытания для пробы";\n',
@@ -70,21 +73,25 @@ class LanguageWordsSearcherTest(unittest.TestCase):
         ]
         expected_result = {
             2: [
-                ( 40, 48, 'Отчёт №1' ),
-                ( 52, 64, 'Другой отчет' ),
-                ( 68, 88, 'Отчет для отчетности' )
+                (40, 48, 'Отчёт №1'),
+                (52, 64, 'Другой отчет'),
+                (68, 88, 'Отчет для отчетности')
             ],
-            6: [
-                ( 37, 56, 'Испытания для пробы' )
+            5: [
+                (33, 52, 'Создать новую пробу'),
+                (54, 68, 'Добавить пробу')
             ],
-            10: [
-                ( 20, 23, 'Код')
+            9: [
+                (37, 56, 'Испытания для пробы')
             ],
-            17: [
-                ( 23, 51, 'Лаборатория / Рабочая группа' )
+            13: [
+                (20, 23, 'Код')
             ],
-            29: [
-                ( 11, 28, 'Произошла ошибка!' )
+            20: [
+                (23, 51, 'Лаборатория / Рабочая группа')
+            ],
+            32: [
+                (11, 28, 'Произошла ошибка!')
             ]
         }
         searcher = LanguageWordsSearcher()
