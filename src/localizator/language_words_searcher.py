@@ -3,8 +3,24 @@ import re
 
 class LanguageWordsSearcher():
     def __init__(self):
-        self._search_pattern = '[а-яА-Я0-9]+[\t .,-:!?@#$%№(){}/\*]*'
+        self._search_pattern = '[а-яА-ЯёЁ]+[0-9\t .,-:!?@#$%№(){}/\*]*'
 
+    def find_all_text_fragments(self, text):
+        row_to_fragments_map = {}
+        for index in range(0, len(text)):
+            line = text[index]
+            if not '{0}' in line:
+                mapper = self.find_words_in_line(line)
+                if len(mapper) != 0:
+                    row_to_fragments_map[index] = mapper
+        return row_to_fragments_map
+
+    '''
+    Returns list of tuples:
+      start of fragment,
+      end of fragment,
+      fragment text
+    '''
     def find_words_in_line(self, line):
         mapper = []
         for match in re.finditer(self._search_pattern, line):
