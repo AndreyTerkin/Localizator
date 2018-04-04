@@ -8,8 +8,8 @@ from src.localizator.language_words_searcher import LanguageWordsSearcher
 
 
 class Localizator:
-    def __init__(self, project_folder, project_file):
-        self._project_folder = project_folder
+    def __init__(self, project_file):
+        self._project_folder = os.path.dirname(project_file)
         self._project_file = project_file
 
     def localize_datamodel(self, init_dir, entity_type, black_list):
@@ -41,17 +41,27 @@ class Localizator:
             return
         # TODO: check if resources already created
         properties = code_editor.properties
-        XMLEditor.create_resources(self._project_folder, self._project_file, related_path, entity_name, properties)
+        XMLEditor.create_resources(self._project_file, related_path, entity_name, properties)
         print('-' * 20)
 
-    def localize_view_file(self, file):
-        deleted_rows, deleted_fragments = self._remove_comments(file)
-        properties = self._replace_literal_constants_by_resources(file, 'Resources')
-        self._restore_comments(file, deleted_rows, deleted_fragments)
-        target_folder = "C:\\Projects\\Scripts\\Localizator\\samples"
-        self._create_resources(properties, target_folder)
-        # Connect resources to resource projects
+    def localize_view_file(self, root_directory, file, output_projects):
+        file_path_relate_to_root = os.path.relpath(file, root_directory)
+        additional_path = os.path.dirname(file_path_relate_to_root)
+        file_name = os.path.basename(file)
+        entity_name = os.path.splitext(file_name)[0]
+        resource_namespace = 'Resources.{0}.{1}'.format(additional_path.replace('\\', '.'), entity_name)
 
+        deleted_rows, deleted_fragments = self._remove_comments(file)
+        properties = self._replace_literal_constants_by_resources(file, resource_namespace)
+        self._restore_comments(file, deleted_rows, deleted_fragments)
+        # Create resources
+        for proj in output_projects:
+            proj_directory = os.path.dirname(proj)
+            target_folder = os.path.join(proj_directory, 'Resources', additional_path, entity_name)
+            XMLEditor.create_resource_file(properties, target_folder)
+            XMLEditor.generate_strong_type_resource_classes(target_folder, resource_namespace)
+            # Connect resources to project
+            XMLEditor.add_resources_to_project(proj, additional_path, resource_namespace, entity_name)
         # TODO: handle cases (like in Sample/Test.cshtml):
         # 1) string.Format("Текст {0} другой текст", arg0);
         # 2) ViewContext.Writer.Write(@"<div class=""alert"">Текст {0} продолжение текста</div>", arg0);
@@ -101,7 +111,7 @@ class Localizator:
         for row_index in text_fragments:
             for fragment in text_fragments[row_index]:
                 property_name = 'Property{0}'.format(counter)
-                resource_insertion = '{0}.{1}'.format(namespace, property_name)
+                resource_insertion = '{0}.{1}.{2}'.format(namespace, 'Resource', property_name)
                 if not Localizator._is_text_among_razor(text[row_index], fragment):
                     resource_insertion = '@' + resource_insertion
                 text[row_index] = text[row_index][:fragment[0]] +\
@@ -114,11 +124,6 @@ class Localizator:
         for line in text:
             f.write(line)
         return properties
-
-    @staticmethod
-    def _create_resources(properties, target_folder):
-        xml_editor = XMLEditor()
-        xml_editor.create_resource_file(properties, target_folder)
 
     '''
     There is a chance of wrong result

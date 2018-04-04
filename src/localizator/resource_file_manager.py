@@ -8,21 +8,23 @@ class XMLEditor:
     languages = ['', '.en']
 
     @staticmethod
-    def create_resources(project_folder, project_file, related_path, entity_name, properties):
+    def create_resources(project_file, additional_path, entity_name, properties):
         print('Creating resource files for entity {0}'.format(entity_name))
         if len(properties) == 0:
             print('There is no properties to add into resources')
             return
 
-        target_folder = os.path.join(project_folder, 'Resources', related_path, entity_name, 'Resource.resx')
-        if os.path.exists(target_folder):
+        project_folder = os.path.dirname(project_file)
+        target_folder = os.path.join(project_folder, 'Resources', additional_path, entity_name)
+        target_file = os.path.join(target_folder, 'Resource.resx')
+        if os.path.exists(target_file):
             print('Resource files for entity {0} already exist'.format(entity_name))
             return
 
-        target_folder = os.path.join(project_folder, 'Resources', related_path, entity_name)
+        namespace = additional_path.replace('\\', '.')
         XMLEditor.create_resource_file(properties, target_folder)
-        XMLEditor.generate_strong_type_resource_classes(project_folder, related_path, entity_name)
-        XMLEditor.add_resources_to_project(project_folder, project_file, related_path, entity_name)
+        XMLEditor.generate_strong_type_resource_classes(target_folder, namespace)
+        XMLEditor.add_resources_to_project(project_file, additional_path, namespace, entity_name)
         print('Creating resource files was successfully')
 
     @staticmethod
@@ -47,18 +49,19 @@ class XMLEditor:
         XMLEditor._indent(root)
 
         tree = ET.ElementTree(root)
-        with open(target_folder + "\\Resource.resx", "wb") as f:
-            print('  Creating file {0}\\Resource.res...'.format(target_folder))
+        resource1 = target_folder + "\\Resource.resx"
+        with open(resource1, "wb") as f:
+            print('  Creating file {0}...'.format(resource1))
             tree.write(f, encoding='utf-8')
         print('    File was created successfully')
-        with open(target_folder + "\\Resource.en.resx", "wb") as f:
-            print('  Creating file {0}\\Resource.en.resx...'.format(target_folder))
+        resource2 = target_folder + "\\Resource.en.resx"
+        with open(resource2, "wb") as f:
+            print('  Creating file {0}...'.format(resource2))
             tree.write(f, encoding='utf-8')
         print('    File was created successfully')
 
     @staticmethod
-    def generate_strong_type_resource_classes(project_folder, related_path, entity_name):
-        target_folder = os.path.join(project_folder, 'Resources', related_path, entity_name)
+    def generate_strong_type_resource_classes(target_folder, namespace):
         input_file = os.path.join(target_folder, 'Resource.resx')
         for lang in XMLEditor.languages:
             output_file = os.path.join(target_folder, 'Resource{0}.Designer.cs'.format(lang))
@@ -67,10 +70,9 @@ class XMLEditor:
                 subprocess.check_output([
                     'resgen',
                     input_file,
-                    '/str:C#,EAE_LIMS.DBModel.Resources.{0}.{1},Resource,{2}'
-                        .format(related_path.replace('\\', '.'), entity_name, output_file),
+                    '/str:C#,{0},Resource,{1}'.format(namespace, output_file),
                     '/publicClass'],
-                    shell = True
+                    shell=True
                 )
             else:
                 open(output_file, 'w').close()
@@ -80,25 +82,23 @@ class XMLEditor:
         pass
 
     @staticmethod
-    def add_resources_to_project(project_folder, project_file, related_path, entity_name):
-        target_file = os.path.join(project_folder, project_file)
-        print('  Start to add resources to project file {0}'.format(target_file))
-
-        print('    Reading file {0}...'.format(target_file))
-        tree = ET.ElementTree(file=target_file)
+    def add_resources_to_project(project_file, additional_path, resource_namespace, entity_name):
+        print('  Start to add resources to project file {0}'.format(project_file))
+        print('    Reading file {0}...'.format(project_file))
+        tree = ET.ElementTree(file=project_file)
         root = tree.getroot()
         ET.register_namespace('', "http://schemas.microsoft.com/developer/msbuild/2003")
 
         namespace, tag_name = XMLEditor._tag_uri_and_name(root)
-        iter = root.iter("{0}{1}".format('{' + namespace + '}', 'ItemGroup'))
+        iter_collection = root.iter("{0}{1}".format('{' + namespace + '}', 'ItemGroup'))
 
         # find Compile tags
         print('    Adding Compile attributes')
         compile_element_group = None
         stop_search = False
-        for item_group in iter:
-            for compile in item_group:
-                if compile.tag == "{0}{1}".format('{' + namespace + '}', 'Compile'):
+        for item_group in iter_collection:
+            for compile_item in item_group:
+                if compile_item.tag == "{0}{1}".format('{' + namespace + '}', 'Compile'):
                     compile_element_group = item_group
                     stop_search = True
                     break
@@ -109,7 +109,7 @@ class XMLEditor:
         for lang in XMLEditor.languages:
             embedded_res = ET.SubElement(compile_element_group, 'Compile', {
                 "Include": "Resources\{0}\{1}\Resource{2}.Designer.cs"
-                                 .format(related_path, entity_name, lang)
+                                 .format(additional_path, entity_name, lang)
             })
             depend_upon = ET.SubElement(embedded_res, 'DependentUpon')
             depend_upon.text = 'Resource{0}.resx'.format(lang)
@@ -123,7 +123,7 @@ class XMLEditor:
         print('    Adding EmbeddedResource attributes')
         embedded_resources_group = None
         stop_search = False
-        for item_group in iter:
+        for item_group in iter_collection:
             for embedded_resource in item_group:
                 if embedded_resource.tag == "{0}{1}".format('{' + namespace + '}', 'EmbeddedResource'):
                     embedded_resources_group = item_group
@@ -136,19 +136,18 @@ class XMLEditor:
         for lang in XMLEditor.languages:
             embedded_res = ET.SubElement(embedded_resources_group, 'EmbeddedResource', {
                 "Include": "Resources\{0}\{1}\Resource{2}.resx"
-                                 .format(related_path, entity_name, lang)
+                                 .format(additional_path, entity_name, lang)
             })
             generator = ET.SubElement(embedded_res, 'Generator')
             generator.text = 'PublicResXFileCodeGenerator'
             las_gen_output = ET.SubElement(embedded_res, 'LastGenOutput')
             las_gen_output.text = 'Resource{0}.Designer.cs'.format(lang)
             custom_namespace = ET.SubElement(embedded_res, 'CustomToolNamespace')
-            custom_namespace.text = 'EAE_LIMS.DBModel.Resources.{0}.{1}'\
-                .format(related_path.replace('\\', '.'), entity_name)
-        XMLEditor._indent(embedded_resources_group) # pretty print
+            custom_namespace.text = resource_namespace
+        XMLEditor._indent(embedded_resources_group)  # pretty print
 
         tree = ET.ElementTree(root)
-        with open(target_file, "wb") as f:
+        with open(project_file, "wb") as f:
             print('    Saving changes...')
             tree.write(f, xml_declaration=True, encoding='utf-8')
         print('      Successfully saved')
