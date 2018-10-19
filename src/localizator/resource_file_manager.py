@@ -23,7 +23,7 @@ class XMLEditor:
 
         namespace = additional_path.replace('\\', '.')
         XMLEditor.create_resource_file(properties, target_folder)
-        XMLEditor.generate_strong_type_resource_classes(target_folder, namespace)
+        # XMLEditor.generate_strong_type_resource_classes(target_folder, namespace)
         XMLEditor.add_resources_to_project(project_file, additional_path, namespace, entity_name)
         print('Creating resource files was successfully')
 

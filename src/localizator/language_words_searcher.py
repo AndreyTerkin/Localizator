@@ -3,7 +3,7 @@ import re
 
 class LanguageWordsSearcher():
     def __init__(self):
-        self._search_pattern = '[а-яА-ЯёЁ]+[0-9\t .,-:!?@#$%№(){}/\*]*'
+        self._search_pattern = '[а-яА-ЯёЁ]+[0-9\t .,-:!?#$%№(){}«—»/\*]*'
 
     '''
     Returns dictionary of found text fragments with its start and end indexes:
@@ -80,6 +80,7 @@ class LanguageWordsSearcher():
 
 
 if __name__ == "__main__":
-    text = '<text class="style">Тут к№акой-то те(к)ст</text><p>Тут снова:текст, с. другими: знакам!и препи?нания</p>'
+    text = '            <dd>Дата и время отбора: @(variable.Property.InnerProperty?.ToString() ?? "не указана")</dd>\n'
     searcher = LanguageWordsSearcher()
-    searcher.find_words_in_line(text)
+    a = searcher.find_words_in_line(text)
+    pass
